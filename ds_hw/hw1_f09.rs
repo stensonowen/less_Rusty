@@ -7,6 +7,7 @@ use std::fs::File;
 use std::path::Path;
 use std::io::BufReader;
 use std::io::BufRead;
+use std::io::Write;
 
 enum Align { 
     Left, 
@@ -35,16 +36,31 @@ fn main() {
 
     ////file io
     let f_in = match File::open(fn_in) {
-        Err(e) => panic!("Failed to open input file {}: {}", fn_in, Error::description(&e)),
+        Err(e) => panic!("Failed to open input file {}: {}", 
+                         fn_in, Error::description(&e)),
         Ok(f)  => f,
     };
     let f_in_reader = BufReader::new(f_in);
     for line in f_in_reader.lines(){
         println!("{}", line.unwrap());
     }
+
     let f_out= Path::new(fn_out);
-    //let mut f_out = match File::open(&f_out) {
-    //    Err(e)  => panic!("Failed to open output file {}: {}", f_out.display(), Error::description(&e)),
+    let mut f_out_ = match File::create(&f_out){
+        Err(e)  => panic!("failed to create file {}: {}", 
+                          f_out.display(), Error::description(&e)),
+        Ok(f)   => f,
+    };
+    let lorem_ipsum = "LOREM IPSUM";
+    match f_out_.write_all(lorem_ipsum.as_bytes()) {
+        Err(e)  => panic!("couldn't write to {}: {}",
+                          f_out.display(), Error::description(&e)),
+        Ok(_)   => println!("success"),
+    }
+
+    //let f_out = match File::open(&f_out) {
+    //    Err(e)  => panic!("Failed to open output file {}: {}", 
+    //                      f_out.display(), Error::description(&e)),
     //    Ok(f)   => f,
     //};
 
