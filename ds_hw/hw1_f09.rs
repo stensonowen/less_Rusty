@@ -16,12 +16,42 @@ fn format(lines: Vec<String>, align: Align) -> Vec<String> {
     Vec::<String>::new()
 }
 
-fn split_up(f_in: &File, width: u32) -> Vec<String> {
+fn split_up(f_in: &File, width: usize) -> Vec<String> {
+    //prepare vector that is to hold formatted lines
+    let mut lines = Vec::<String>::new();
+    lines.push(String::new());
+    let mut l = 0;  //current line to alter
+    //prepare to read from input one line at a time
+    //dealing with one line at a time is preferable to reading 
+    // into a single string and then tokenizing it all
     let f_in_reader = BufReader::new(f_in);
     for line in f_in_reader.lines(){
-        println!("{}", line.unwrap());
+        //split line into words and cycle through them
+        let line = line.unwrap();
+        let words = line.split(' ');
+        for word in words {
+            //not sophisticated enough to split individual words by syllable
+            // no hyphenation -> undefined case: throw error
+            if word.len() > width {
+                panic!("Error: word <{}> in line <{}> is longer than the desired width: {} > {}",
+                       word, line, word.len(), width);
+            }
+            //append word to formatted line if it won't put it over the width threshold
+            else if lines[l].len() + word.len() < width {
+                lines[l].push(' ');
+                lines[l].push_str(word);
+            } 
+            //otherwise push it to the next line
+            else {
+                lines.push(word.to_string());
+                l += 1;
+            }
+        }
     }
-    Vec::<String>::new()
+    for line in &lines {
+        println!("{}", line);
+    }
+    lines
 }
 
 fn write_out(mut f_out: &File, lines: Vec<String>) {
@@ -46,7 +76,7 @@ fn main() {
         "full_justify"  => Align::Full,
         _   => panic!("Alignment must be 'flush_left', 'flush_right', or 'full_justify'"), 
     };
-    let width: u32 = match args[3].trim().parse(){
+    let width: usize = match args[3].trim().parse(){
         Ok(n) => n,
         _   => panic!("Width must be a positive integer"),
     };
@@ -58,7 +88,7 @@ fn main() {
         Ok(f)  => f,
     };
     let fn_out= Path::new(&args[2]);
-    let mut f_out = match File::create(&fn_out){
+    let f_out = match File::create(&fn_out){
         Err(e)  => panic!("failed to create file {}: {}", 
                           fn_out.display(), Error::description(&e)),
         Ok(f)   => f,
