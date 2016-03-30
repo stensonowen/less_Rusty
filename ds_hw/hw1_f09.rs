@@ -6,14 +6,44 @@ use std::fs::File;
 use std::path::Path;
 use std::io::{BufReader, BufRead, Write};
 
+#[derive(PartialEq)]    //==
 enum Align { 
     Left, 
     Right, 
     Full,
 }
 
-fn format(lines: Vec<String>, align: Align) -> Vec<String> {
-    Vec::<String>::new()
+fn format<'a>(mut lines: &'a Vec<String>, align: Align, width: usize) -> &'a Vec<String> {
+    for line in lines {
+        //line will be string of words separated by spaces
+        if align == Align::Full {
+            let v : Vec<_> = line.split(' ').collect();
+            let num_letters = line.len() - match v.len() {
+                //number of spaces should be excluded from count of current real letters:
+                0|1 => 0,
+                x   => x-1,
+            };
+            //let tmp = v.iter().fold(String::new(), |l, w| l.push_str(w));
+            let mut spaces = String::new();
+            for i in 0..(width-num_letters) {
+                spaces.push(' ');
+            }
+            //let line = &v.connect(&spaces);
+            //let line = "foo";
+            let line = "foo".to_string();
+        }
+        for l in lines {
+            println!(":{}", l);
+        }
+        let spaces = match align {
+            //align = l/r justify: => # spaces before/after
+            //align = c justify:   => # spaces in between
+            Align::Left | Align::Right => width - line.len(),
+            //Align::Cent 
+           _    => 5, 
+       };
+    }
+    &lines
 }
 
 fn split_up(f_in: &File, width: usize) -> Vec<String> {
@@ -48,13 +78,13 @@ fn split_up(f_in: &File, width: usize) -> Vec<String> {
             }
         }
     }
-    for line in &lines {
+    /*for line in &lines {
         println!("{}", line);
-    }
+    }*/
     lines
 }
 
-fn write_out(mut f_out: &File, lines: Vec<String>) {
+fn write_out(mut f_out: &File, lines: &Vec<String>) {
     let lorem_ipsum = "LOREM IPSUM\n".to_string();
     if let Err(e) = f_out.write_all(lorem_ipsum.as_bytes()){
         //don't want to use a match statement,
@@ -96,7 +126,7 @@ fn main() {
 
     //puttin' in work
     let mut lines = split_up(&f_in, width);
-    lines = format(lines, align);
-    write_out(&f_out, lines);
+    lines = format(&lines, align, width);
+    write_out(&f_out, &lines);
 
 }
