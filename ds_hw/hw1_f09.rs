@@ -13,15 +13,6 @@ enum Align {
     Full,
 }
 
-fn write_out(mut f_out: &File, lines: &Vec<String>) {
-    for line in lines {
-        if let Err(e) = f_out.write_all(line.as_bytes()){
-            //don't want to use a match statement,
-            // because Ok(_) should do nothing
-            panic!("failed to write to output file: {}", Error::description(&e));
-        }
-    }
-}
 
 fn main() {
     //Arg parsing:
@@ -67,22 +58,38 @@ fn boxify(lines: Vec<String>, n: usize) -> Vec<String> {
     //but I guess organization is more important than performance in this context
     let mut lines = lines;
     let mut row = String::new();
-    for _ in 0..n+2 {
+    for _ in 0..n+4 {
         row.push('-');
     }
     row.push('\n');
     for mut line in &mut lines {
         line.insert(0, '|');
+        line.insert(1, ' ');
         if line.len() < n+2 {
-            let tmp = n+1-line.len();
+            let tmp = n+2-line.len();
             append_spaces(&mut line, tmp);
         }
-        line.insert(n+1, '|');
+        line.insert(n+2, '|');
+        line.insert(n+2, ' ');
         line.push('\n');
     }
     lines.insert(0, row.clone());
     lines.push(row);
     lines
+}
+
+fn write_out(mut f_out: &File, lines: &Vec<String>) {
+    for line in lines {
+        if let Err(e) = f_out.write_all(line.as_bytes()){
+            //don't want to use a match statement,
+            // because Ok(_) should do nothing
+            panic!("failed to write to output file: {}", Error::description(&e));
+        }
+    }
+}
+
+fn strip(s: &mut String) {
+    //strip trailing whitespace
 }
 
 fn append_spaces(s: &mut String, n: usize) {
