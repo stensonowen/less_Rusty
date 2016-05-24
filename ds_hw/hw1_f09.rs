@@ -40,7 +40,7 @@ fn main() {
         _   => panic!("Width must be a positive integer"),
     };
 
-    ////file io
+    //file io
     let f_in = match File::open(&args[1]) {
         Err(e) => panic!("Failed to open input file {}: {}", 
                          args[1], Error::description(&e)),
@@ -57,21 +57,38 @@ fn main() {
     let words = tokenize(&f_in);
     let lines = split(&words, width);
     let formatted_lines = join(&lines, align, width);
-    write_out(&f_out, &formatted_lines);
+    let boxed_lines = boxify(formatted_lines, width);
+    write_out(&f_out, &boxed_lines);
 
+}
+
+fn boxify(lines: Vec<String>, n: usize) -> Vec<String> {
+    //was initially a part of join() because it avoids all the O(n) insert()s, 
+    //but I guess organization is more important than performance in this context
+    let mut lines = lines;
+    let mut row = String::new();
+    for _ in 0..n+2 {
+        row.push('-');
+    }
+    row.push('\n');
+    for mut line in &mut lines {
+        line.insert(0, '|');
+        if line.len() < n+2 {
+            let tmp = n+1-line.len();
+            append_spaces(&mut line, tmp);
+        }
+        line.insert(n+1, '|');
+        line.push('\n');
+    }
+    lines.insert(0, row.clone());
+    lines.push(row);
+    lines
 }
 
 fn append_spaces(s: &mut String, n: usize) {
     for _ in 0..n {
         s.push(' ');
     }
-}
-fn num_spaces(n: usize) -> String {
-    let mut s = String::new();
-    for _ in 1..n {
-        s.push(' ');
-    }
-    s
 }
 
 fn join(lines: &Vec<Vec<&String>>, align: Align, width: usize) -> Vec<String> {
@@ -81,15 +98,16 @@ fn join(lines: &Vec<Vec<&String>>, align: Align, width: usize) -> Vec<String> {
     let mut c_buff;
 
     for line in lines {
-        let mut buffer = String::new();
+        let mut buffer = String::with_capacity(width+3);
         let line_len = line.iter().fold(0, |len, word| len+word.len()) + (line.len()-1);
-        //assert!(line_len <= width); //can be broken if a word is longer than the width
+        assert!(line_len <= width); //can be broken if a word is longer than the width
+        //will screw up the box: should panic instead
         
         //these ended up harder to follow than I thought
         //maybe they're not great candidates for matches
         l_buff = match align {
             Align::Left | Align::Full => 0,
-            Align::Right => match (width>line_len) {
+            Align::Right => match width>line_len {
                 true => width-line_len,
                 false=> 0,
             },
@@ -108,10 +126,9 @@ fn join(lines: &Vec<Vec<&String>>, align: Align, width: usize) -> Vec<String> {
             buffer.push_str(word);
             append_spaces(&mut buffer, c_buff);
         }
-        buffer.push('\n');
+
         output.push(buffer);
     }
-
     output
 }
 
