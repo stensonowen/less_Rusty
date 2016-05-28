@@ -6,15 +6,45 @@ use std::fs::File;
 use std::path::Path;
 use std::io::{BufReader, BufRead, Write};
 
-#[derive(PartialEq)]    //==
+#[derive(PartialEq,Debug)]    //==
 enum Align { 
     Left, 
     Right, 
     Full,
 }
 
+#[derive(Debug)]
+struct Line {
+    max:        u32,
+    len:        u32,
+    words:      Vec<String>,
+    alignment:  Align,
+}
+
+impl Line {
+    fn new(m: u32, a: Align) -> Line {
+        Line {
+            max:        m,
+            len:        0,
+            words:      vec![],
+            alignment:  a
+        }
+    }
+    fn len(&self) -> u32 {
+        self.len
+    }
+
+}
 
 fn main() {
+
+    let l = Line::new(16, Align::Left);
+    println!("len: {}", l.len());
+    println!("l: {:?}", l);
+}
+
+#[allow(dead_code)]
+fn main2() {
     //Arg parsing:
     let args: Vec<String> = env::args().collect();
     if args.len() != 5 { 
@@ -88,6 +118,7 @@ fn write_out(mut f_out: &File, lines: &Vec<String>) {
     }
 }
 
+#[allow(dead_code)]
 fn strip(s: &mut String) {
     //strip trailing whitespace
 }
