@@ -15,8 +15,8 @@ enum Align {
 
 #[derive(Debug)]
 struct Line {
-    max:        u32,
-    len:        u32,
+    max:        usize,
+    len:        usize,
     words:      Vec<String>,
     alignment:  Align,
 }
@@ -24,23 +24,111 @@ struct Line {
 impl Line {
     fn new(m: u32, a: Align) -> Line {
         Line {
-            max:        m,
+            max:        m as usize,
             len:        0,
             words:      vec![],
             alignment:  a
         }
     }
-    fn len(&self) -> u32 {
-        self.len
+    fn append(&mut self, s: &str) -> bool {
+        //returns whether or not a word was appended
+        //would probably be more Rust-y to return a Result
+        //  maybe
+        let space : usize = (self.len == 0) as usize;
+        let addtn : usize = space + s.len() as usize;
+        if self.len + addtn <= self.max {
+            self.words.push(s.to_string());
+            self.len += addtn;
+            true
+        } else {
+            false
+        }
+    }
+    fn left_justify(self) -> String {
+        let mut s = String::new();
+        s.push_str(self.words.join(" ").as_ref());
+        let l = self.max - s.len();
+        let spaces: String = std::iter::repeat(" ").take(l).collect();
+        s.push_str(spaces.as_ref());
+
+        assert!(s.len() == self.max);
+        s
+    }
+    fn full_justify(self) -> String {
+        let mut s = String::new();
+        //length of every word in the string, excluding spaces
+        let len : usize = self.words.len() + 
+            self.words.iter().fold(0, |acc, w| acc + w.len());
+
+        //this will only work in vectors with >1 words
+        if self.words.len() == 1 {
+            //doesn't make sense to adjust spaces
+            return self.left_justify();
+        } 
+        assert!(self.words.len() > 1);
+        //number of spaces in line:
+        let num_spaces: usize = self.words.len()-1;
+        //average spacing necessary to hit exactly self.max
+        let spacing: f32 = (self.max as f32 - len as f32) 
+            / (num_spaces as f32);  
+        //characters are discrete, and it's possible for spacing to differ
+        //there must be 2 spacings; the first should be 0 or 1 more 
+        let spaces1: String = std::iter::repeat(" ")
+                                        .take(spacing.ceil() as usize)
+                                        .collect();
+        let spaces2: String = std::iter::repeat(" ")
+                                        .take(spacing.floor() as usize)
+                                        .collect();
+        let num_spaces1 = match spaces1 == spaces2 {
+            true  => num_spaces,
+            false => len - self.max + spaces2.len()*num_spaces, 
+        };
+
+        //let a : String = self.words.join(" ");
+        //for word in self.words {
+        //let a : String = self.words.into_iter()
+        //                            .take(num_spaces1)
+        //                            .fold(String::new(), 
+        //                                  |mut acc, w| {
+        //                                      acc.push_str(spaces1.as_ref());
+        //                                      acc.push_str(w.as_ref());
+        //                                      acc
+        //                                  });
+        //let b : String = self.words.rev().take(num_spaces - num_spaces1)
+        //                            .fold(String::new(), 
+        //                                  |mut acc, w| {
+        //                                      acc.push_str(spaces2.as_ref());
+        //                                      acc.push_str(w.as_ref());
+        //                                      acc
+        //                                  });
+                                            
+        println!("{}", a);
+        
+
+
+
+
+            
+             
+
+        s
     }
 
 }
 
 fn main() {
 
-    let l = Line::new(16, Align::Left);
-    println!("len: {}", l.len());
+    let mut l = Line::new(16, Align::Left);
+    println!("len: {}", l.len);
     println!("l: {:?}", l);
+    l.append("hello");
+    l.append("world");
+    l.append("!");
+    println!("l: {:?}", l);
+
+    //println!("{:?}", l.left_justify());
+    l.full_justify();
+
 }
 
 #[allow(dead_code)]
@@ -119,9 +207,9 @@ fn write_out(mut f_out: &File, lines: &Vec<String>) {
 }
 
 #[allow(dead_code)]
-fn strip(s: &mut String) {
-    //strip trailing whitespace
-}
+//fn strip(s: &mut String) {
+//    //strip trailing whitespace
+//}
 
 fn append_spaces(s: &mut String, n: usize) {
     for _ in 0..n {
