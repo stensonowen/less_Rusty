@@ -1,0 +1,6 @@
+[package]
+name = "hw1_s15"
+version = "0.1.0"
+authors = ["owen <stensonowen@gmail.com>"]
+
+[dependencies]
