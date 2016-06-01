@@ -1,4 +1,9 @@
 //http://www.cs.rpi.edu/academics/courses/fall09/ds/hw/01_text_justification/hw.pdf
+//
+//divergence from the spec:
+//  ignores double-spaces following periods (which I refuse to fix)
+//  full-justifies last line (spec says left-) (I don't care enough to fix)
+//  doesn't split long word into chunks to fit onto short lines (who cares)
 
 use std::env;
 use std::error::Error;
@@ -6,30 +11,29 @@ use std::fs::File;
 use std::path::Path;
 use std::io::{BufReader, BufRead, Write};
 
-#[derive(PartialEq,Debug)]    //==
+#[derive(PartialEq)]    //==
 enum Align { 
     Left, 
     Right, 
     Full,
 }
 
-#[derive(Debug)]
 struct Line {
     max:    usize,
+        //could be convenient if this were static or something
+        // because all `Line`s store the same `max`field
+        //But if we wanted to add triangles or circles 
+        // (instead of just rectangles) this will be handy
     len:    usize,
     words:  Vec<String>,
-//    alignment:  Align,
 }
-//would be nice to make `max` and `alignment` static or something:
-//they're constant
 
 impl Line {
     fn new(max: u32) -> Line {
         Line {
-            max:        max as usize,
-            len:        0,
-            words:      vec![],
-            //alignment:  alignment
+            max:    max as usize,
+            len:    0,
+            words:  vec![],
         }
     }
     fn push(&mut self, s: &str) -> bool {
@@ -53,8 +57,6 @@ impl Line {
         let l = self.max - s.len();
         let spaces: String = std::iter::repeat(" ").take(l).collect();
         s.push_str(spaces.as_ref());
-
-        assert!(s.len() == self.max);
         s
     }
     fn right_justify(&self) -> String {
@@ -101,29 +103,10 @@ impl Line {
     }
 }
 
-fn main_() {
-    let len = 21;
-    let mut line = Line::new(len);
-    println!("l: {:?}", line);
-    println!("{}", line.push("hey".as_ref()));
-    println!("{}", line.push("good".as_ref()));
-    println!("{}", line.push("news".as_ref()));
-    println!("{}", line.push("errbody".as_ref()));
-    //line.words = vec!["hey".to_string(), "there".to_string(), "u".to_string(), "!".to_string()];
-    println!("l: {:?}", line);
-
-    //println!("{:?}", l.left_justify());
-    let fj: String = line.full_justify();
-    let lj: String = line.left_justify();
-    let rj: String = line.right_justify();
-    println!("'{}'", fj);
-    println!("'{}'", lj);
-    println!("'{}'", rj);
-    let hl: String = std::iter::repeat("-".to_string()).take(len as usize).collect();
-    println!("|{}|", hl);
-}
-
 fn split_up(words: &Vec<String>, width: u32) -> Vec<Line> {
+    //put vector of words into vector of lines
+    //this is where interesting text shapes would go
+    // (that is, replacing rectangle with triangle / circle)
     let mut lines = vec![];
     let mut line = Line::new(width);
     for word in words {
@@ -142,23 +125,19 @@ fn split_up(words: &Vec<String>, width: u32) -> Vec<Line> {
 fn format(content: &Vec<Line>, alignment: Align) -> Vec<String> {
     let len = content[0].max + 4;   //old len + pipe and space on each side
     let horizontal: String = std::iter::repeat("-".to_string()).take(len).collect();
-    let mut lines = vec![horizontal.clone()];
+    let mut lines = vec![horizontal.clone() + "\n"];
     for line in content {
-        //println!("{:?}", line.words);
-        let s: String = format!("| {} |", match alignment {
+        let s: String = format!("| {} |\n", match alignment {
             Align::Left     => line.left_justify(),
             Align::Right    => line.right_justify(),
             Align::Full     => line.full_justify(),
         });
-        //println!("{}\n", s);
         lines.push(s);
     }
-    lines.push(horizontal);
-
+    lines.push(horizontal + "\n");  //spec excludes this newline
     lines
 }
 
-#[allow(dead_code)]
 fn main() {
     //Arg parsing:
     let args: Vec<String> = env::args().collect();
@@ -193,44 +172,12 @@ fn main() {
     let words = tokenize(&f_in);
     let lines = split_up(&words, width);
     let lines = format(&lines, align);
-    for l in lines {
-        println!("{}", l);
-    }
-    //println!("{:?}", lines);
-    //let lines = split(&words, width);
-    //let formatted_lines = join(&lines, align, width);
-    //let boxed_lines = boxify(formatted_lines, width);
-    //write_out(&f_out, &boxed_lines);
-
+    write_out(&f_out, &lines);
 }
 
-
-fn boxify(lines: Vec<String>, n: usize) -> Vec<String> {
-    //was initially a part of join() because it avoids all the O(n) insert()s, 
-    //but I guess organization is more important than performance in this context
-    let mut lines = lines;
-    let mut row = String::new();
-    for _ in 0..n+4 {
-        row.push('-');
-    }
-    row.push('\n');
-    for mut line in &mut lines {
-        line.insert(0, '|');
-        line.insert(1, ' ');
-        if line.len() < n+2 {
-            let tmp = n+2-line.len();
-            append_spaces(&mut line, tmp);
-        }
-        line.insert(n+2, '|');
-        line.insert(n+2, ' ');
-        line.push('\n');
-    }
-    lines.insert(0, row.clone());
-    lines.push(row);
-    lines
-}
 
 fn write_out(mut f_out: &File, lines: &Vec<String>) {
+    //write vector of strings to an output file
     for line in lines {
         if let Err(e) = f_out.write_all(line.as_bytes()){
             //don't want to use a match statement,
@@ -238,58 +185,6 @@ fn write_out(mut f_out: &File, lines: &Vec<String>) {
             panic!("failed to write to output file: {}", Error::description(&e));
         }
     }
-}
-
-#[allow(dead_code)]
-//fn strip(s: &mut String) {
-//    //strip trailing whitespace
-//}
-
-fn append_spaces(s: &mut String, n: usize) {
-    for _ in 0..n {
-        s.push(' ');
-    }
-}
-
-fn join(lines: &Vec<Vec<&String>>, align: Align, width: usize) -> Vec<String> {
-    //takes a vector of vectors (lines of words), and inserts spaces according to alignment
-    let mut output = Vec::<String>::new();
-    let mut l_buff;
-    let mut c_buff;
-
-    for line in lines {
-        let mut buffer = String::with_capacity(width+3);
-        let line_len = line.iter().fold(0, |len, word| len+word.len()) + (line.len()-1);
-        assert!(line_len <= width); //can be broken if a word is longer than the width
-        //will screw up the box: should panic instead
-        
-        //these ended up harder to follow than I thought
-        //maybe they're not great candidates for matches
-        l_buff = match align {
-            Align::Left | Align::Full => 0,
-            Align::Right => match width>line_len {
-                true => width-line_len,
-                false=> 0,
-            },
-        };
-        let num_spaces = line.len()-1;
-        c_buff = match align {
-            Align::Left | Align::Right => 1,
-            Align::Full => match num_spaces {
-                0 => 0,
-                n => (width-line_len+n)/n,
-            },
-        };
-
-        append_spaces(&mut buffer, l_buff);
-        for word in line {
-            buffer.push_str(word);
-            append_spaces(&mut buffer, c_buff);
-        }
-
-        output.push(buffer);
-    }
-    output
 }
 
 fn tokenize(f_in: &File) -> Vec<String>{
@@ -305,28 +200,3 @@ fn tokenize(f_in: &File) -> Vec<String>{
     }
     words
 }
-
-fn split(words: &Vec<String>, width: usize) -> Vec<Vec<&String>>{
-    //Input: a vector of words and a desired line length
-    //Output: a vector of lines, each one a vector of words, which meet the line length
-    let mut lines = Vec::new();
-    lines.push(Vec::new());
-    let mut line_len = 0; 
-    let mut line_cnt = 1;
-    for word in words{
-        if line_len + word.len() >= width {
-            //must start adding words to a new line
-            line_len = 0;
-            lines.push(Vec::new());
-            line_cnt += 1;
-        }
-        lines[line_cnt-1].push(word);
-        line_len += word.len() + match line_len {
-            //add 1 for a new space, unless this word is the first
-            0 => 0,
-            _ => 1,
-        };
-    }
-    lines
-}
-
