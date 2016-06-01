@@ -15,26 +15,29 @@ enum Align {
 
 #[derive(Debug)]
 struct Line {
-    max:        usize,
-    len:        usize,
-    words:      Vec<String>,
-    alignment:  Align,
+    max:    usize,
+    len:    usize,
+    words:  Vec<String>,
+//    alignment:  Align,
 }
+//would be nice to make `max` and `alignment` static or something:
+//they're constant
 
 impl Line {
-    fn new(m: u32, a: Align) -> Line {
+    fn new(max: u32) -> Line {
         Line {
-            max:        m as usize,
+            max:        max as usize,
             len:        0,
             words:      vec![],
-            alignment:  a
+            //alignment:  alignment
         }
     }
     fn push(&mut self, s: &str) -> bool {
         //returns whether or not a word was appended
         //would probably be more Rust-y to return a Result
         //  maybe
-        let space : usize = (self.len == 0) as usize;
+        assert!(s.len() <= self.max);
+        let space : usize = (self.len != 0) as usize;
         let addtn : usize = space + s.len() as usize;
         if self.len + addtn <= self.max {
             self.words.push(s.to_string());
@@ -44,7 +47,7 @@ impl Line {
             false
         }
     }
-    fn left_justify(self) -> String {
+    fn left_justify(&self) -> String {
         let mut s = String::new();
         s.push_str(self.words.join(" ").as_ref());
         let l = self.max - s.len();
@@ -54,7 +57,17 @@ impl Line {
         assert!(s.len() == self.max);
         s
     }
-    fn full_justify(self) -> String {
+    fn right_justify(&self) -> String {
+        let mut s = String::new();
+        let len: usize = self.words.iter().fold(0, |acc, w| acc+w.len()) + self.words.len()-1;
+        let num_spaces: usize = self.max - len;
+        let spaces: String = std::iter::repeat(" ").take(num_spaces).collect();
+        s.push_str(spaces.as_ref());
+        s.push_str(self.words.join(" ").as_ref());
+        s
+    }
+
+    fn full_justify(&self) -> String {
         //this will only work in vectors with >1 words
         if self.words.len() == 1 {
             //doesn't make sense to adjust spaces
@@ -63,7 +76,7 @@ impl Line {
         assert!(self.words.len() > 1);
 
         //length of every word in the string, excluding spaces
-        let len: usize = self.words.iter().fold(0, |acc, w| acc + w.len());
+        let len: usize = self.words.iter().fold(0, |acc, w| acc+w.len());
         //number of spaces in line
         let num_spaces: usize = self.words.len()-1;
 
@@ -88,24 +101,65 @@ impl Line {
     }
 }
 
-fn main() {
-
-    let mut l = Line::new(17, Align::Left);
-    println!("len: {}", l.len);
-    println!("l: {:?}", l);
-    //l.append("hello");
-    //l.append("world");
-    //l.append("!");
-    l.words = vec!["hey".to_string(), "there".to_string(), "u".to_string(), "!".to_string()];
-    println!("l: {:?}", l);
+fn main_() {
+    let len = 21;
+    let mut line = Line::new(len);
+    println!("l: {:?}", line);
+    println!("{}", line.push("hey".as_ref()));
+    println!("{}", line.push("good".as_ref()));
+    println!("{}", line.push("news".as_ref()));
+    println!("{}", line.push("errbody".as_ref()));
+    //line.words = vec!["hey".to_string(), "there".to_string(), "u".to_string(), "!".to_string()];
+    println!("l: {:?}", line);
 
     //println!("{:?}", l.left_justify());
-    l.full_justify();
+    let fj: String = line.full_justify();
+    let lj: String = line.left_justify();
+    let rj: String = line.right_justify();
+    println!("'{}'", fj);
+    println!("'{}'", lj);
+    println!("'{}'", rj);
+    let hl: String = std::iter::repeat("-".to_string()).take(len as usize).collect();
+    println!("|{}|", hl);
+}
 
+fn split_up(words: &Vec<String>, width: u32) -> Vec<Line> {
+    let mut lines = vec![];
+    let mut line = Line::new(width);
+    for word in words {
+        if line.push(word) == false {
+            lines.push(line);
+            line = Line::new(width);
+            assert!(line.push(word));
+        }
+    }
+    if line.len > 0 {
+        lines.push(line);
+    }
+    lines
+}
+
+fn format(content: &Vec<Line>, alignment: Align) -> Vec<String> {
+    let len = content[0].max + 4;   //old len + pipe and space on each side
+    let horizontal: String = std::iter::repeat("-".to_string()).take(len).collect();
+    let mut lines = vec![horizontal.clone()];
+    for line in content {
+        //println!("{:?}", line.words);
+        let s: String = format!("| {} |", match alignment {
+            Align::Left     => line.left_justify(),
+            Align::Right    => line.right_justify(),
+            Align::Full     => line.full_justify(),
+        });
+        //println!("{}\n", s);
+        lines.push(s);
+    }
+    lines.push(horizontal);
+
+    lines
 }
 
 #[allow(dead_code)]
-fn main2() {
+fn main() {
     //Arg parsing:
     let args: Vec<String> = env::args().collect();
     if args.len() != 5 { 
@@ -117,7 +171,7 @@ fn main2() {
         "full_justify"  => Align::Full,
         _   => panic!("Alignment must be 'flush_left', 'flush_right', or 'full_justify'"), 
     };
-    let width: usize = match args[3].trim().parse(){
+    let width: u32 = match args[3].trim().parse(){
         Ok(n) => n,
         _   => panic!("Width must be a positive integer"),
     };
@@ -137,12 +191,19 @@ fn main2() {
 
     //and here... we... go
     let words = tokenize(&f_in);
-    let lines = split(&words, width);
-    let formatted_lines = join(&lines, align, width);
-    let boxed_lines = boxify(formatted_lines, width);
-    write_out(&f_out, &boxed_lines);
+    let lines = split_up(&words, width);
+    let lines = format(&lines, align);
+    for l in lines {
+        println!("{}", l);
+    }
+    //println!("{:?}", lines);
+    //let lines = split(&words, width);
+    //let formatted_lines = join(&lines, align, width);
+    //let boxed_lines = boxify(formatted_lines, width);
+    //write_out(&f_out, &boxed_lines);
 
 }
+
 
 fn boxify(lines: Vec<String>, n: usize) -> Vec<String> {
     //was initially a part of join() because it avoids all the O(n) insert()s, 
