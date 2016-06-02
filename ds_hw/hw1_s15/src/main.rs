@@ -10,9 +10,9 @@ use std::path::Path;
 use std::fmt;
 
 
-#[derive(Debug)]
+#[derive(PartialEq,Debug)]
 //Makes it easy to tell whether a cell was recently changed
-//this way one call to `replace` won't affect one cell more than once
+//this way one call to `dilation` won't affect one cell more than once
 enum Cell {
     Old(char),
     New(char),
@@ -48,6 +48,7 @@ impl fmt::Display for Board {
     }
 }
 
+#[allow(dead_code)]
 impl Board {
     fn new(f_in: &File) -> Board {
         let mut board: Vec<Vec<Cell>> = vec![];
@@ -65,6 +66,17 @@ impl Board {
             width:  board[0].len(),
             height: board.len(),
             board:  board 
+        }
+    }
+    fn replace(&mut self, old: char, new: char) {
+        //replace every instance of `old` with `new`
+        //doesn't need to use Cell::New
+        for line in &mut self.board {
+            for mut c in line {
+                if *c == Cell::Old(old) {
+                    *c = Cell::Old(new);
+                }
+            }
         }
     }
     fn submit(&mut self) {
@@ -136,12 +148,19 @@ fn main() {
     };
 
     let mut board = Board::new(&f_in);
-    board.submit();
-    board.modify(18,0,'0');
+    //board.replace('X', 'Y');
+    //board.submit();
+    //board.modify(18,0,'0');
     println!("{}", board);
     
     if let Some(m) = matches.subcommand_matches("replace"){
         if let (Some(new), Some(old)) = (m.value_of("new"), m.value_of("old")){
+            //`char` doesn't implement FromStr (understandably),
+            // so clap's typing macro won't help us
+            assert!(new.len() == 1 && old.len() == 1);
+            let new: char = new.chars().nth(0).unwrap();
+            let old: char = old.chars().nth(0).unwrap();
+            board.replace(old, new);
             println!("new: '{}'; old: '{}'", new, old);
         }
         else { assert!(false); } //clap should prevent this from ever being triggered, right?
@@ -166,5 +185,6 @@ fn main() {
 
 
 
+    println!("{}", board);
 
 }
