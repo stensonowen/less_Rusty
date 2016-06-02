@@ -89,7 +89,14 @@ impl Board {
             }
         }
     }
-    fn modify(&mut self, x: usize, y: usize, c: char){
+    //fn get(&self, x: usize, y: usize) -> Cell {
+    //    if x < self.width && y < self.height {
+    //        self.board[y][x]
+    //    } else {
+    //        Cell::New('?')
+    //    }
+    //}
+    fn modify(&mut self, x: usize, y: usize, c: char) {
         //sets the point at (x,y) to character c
         // iff it is `Old` (i.e. unchanged from the last round)
         //more Rust-y to modify the iterator through characters 
@@ -97,6 +104,44 @@ impl Board {
         assert!(x < self.width && y < self.height);
         if let Cell::Old(_) = self.board[y][x] {
             self.board[y][x] = Cell::New(c);
+        }
+    }
+    fn is_adjacent_to(&self, x: usize, y: usize, c: char) -> bool {
+        //checks whether the point (x,y) is adjacent to an Cell::Old(c)
+        let equiv = Cell::Old(c);
+        //check top:
+        if y>1                  && self.board[y-1][x] == equiv { true }
+        else if y<self.height-1 && self.board[y+1][x] == equiv { true }
+        //left
+        else if x>1             && self.board[y][x-1] == equiv { true }
+        else if x<self.width-1  && self.board[y][x+1] == equiv { true } 
+        else { false }
+    }
+    fn dilate(&mut self, old: char) {
+        //works; probably should be refactored 
+        //illuminauty
+        //for each column...
+        for x in 0..self.width {
+            //in each row...
+            for y in 0..self.height {
+                //if the cell at (x,y) is the proper character...
+                if self.board[y][x] == Cell::Old(old) {
+                    //for each of the bordering points (above, right, below, left)...
+                    for (j,i) in vec!((y-1,x), (y,x+1), (y+1,x), (y,x-1)) {
+                        //if it is a valid point...
+                        if i < self.width && j < self.height {
+                            //and it is marked `Old`...
+                            if let Cell::Old(c) = self.board[j][i] {
+                                //and it is not already the proper character
+                                if c != old {
+                                    //then change it (but it should be marked `New`)
+                                    self.board[j][i] = Cell::New(old);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -149,8 +194,9 @@ fn main() {
 
     let mut board = Board::new(&f_in);
     //board.replace('X', 'Y');
-    //board.submit();
-    //board.modify(18,0,'0');
+    //board.modify(0,0,'0');
+    println!("{}", board);
+    board.dilate('X');
     println!("{}", board);
     
     if let Some(m) = matches.subcommand_matches("replace"){
