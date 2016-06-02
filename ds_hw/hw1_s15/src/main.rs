@@ -54,10 +54,10 @@ impl Board {
             println!("");
         }
     }
-    fn submit(&self) {
-        for mut line in &self.board {
+    fn submit(&mut self) {
+        for mut line in &mut self.board {
             for mut c in line {
-                c = State::New('x');
+                *c = State::New('x');
             }
         }
     }
@@ -109,7 +109,9 @@ fn main() {
         Ok(f)   => f,
     };
 
-    let board = Board::new(&f_in);
+    let mut board = Board::new(&f_in);
+    board.print();
+    board.submit();
     board.print();
     
     if let Some(m) = matches.subcommand_matches("replace"){
