@@ -7,30 +7,56 @@ use std::io::{BufReader, BufRead};
 //use std::io::Write;
 use std::error::Error;
 use std::path::Path;
+use std::fmt;
 
 
 #[derive(Debug)]
-enum State {
+//Makes it easy to tell whether a cell was recently changed
+//this way one call to `replace` won't affect one cell more than once
+enum Cell {
     Old(char),
     New(char),
 }
 
 #[derive(Debug)]
+//stores board metadata and table
+//point (0,0) is the top-left
+//point (0,9) is the top-right
 struct Board {
     width:  usize,
     height: usize,
-    board:  Vec<Vec<State>>,
+    board:  Vec<Vec<Cell>>,
+}
+
+impl fmt::Display for Board {
+    //print; for debugging porpoises
+    //using Display instead of Debug because Debug displays Enum wrapper
+    //need Display for Debug purposes
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(f, "Board: ({}x{})\n\t", self.width, self.height));
+        for line in &self.board {
+            for c in line {
+                let c = match *c {
+                    Cell::New(c) => c,
+                    Cell::Old(c) => c,
+                };
+                try!(write!(f, "{}", c));
+            }
+            try!(write!(f, "\n\t"));
+        }
+        write!(f, "")
+    }
 }
 
 impl Board {
     fn new(f_in: &File) -> Board {
-        let mut board: Vec<Vec<State>> = vec![];
-        let mut char_line: Vec<State> = vec![];
+        let mut board: Vec<Vec<Cell>> = vec![];
+        let mut char_line: Vec<Cell> = vec![];
         let reader = BufReader::new(f_in);
         for file_line in reader.lines() {
             for c in file_line.unwrap().chars() {
                 //chars are smaller than u8s (by x2)
-                char_line.push(State::Old(c));
+                char_line.push(Cell::Old(c));
             }
             board.push(char_line);
             char_line = vec![];
@@ -41,24 +67,24 @@ impl Board {
             board:  board 
         }
     }
-    fn print(&self) {
-        println!("Printing board; height={}, width={}", self.height, self.width);
-        for line in &self.board {
-            for c in line {
-                let c = match *c {
-                    State::New(c) => c,
-                    State::Old(c) => c,
-                };
-                print!("{}", c);
+    fn submit(&mut self) {
+        //mark each cell as 'Old'
+        for line in &mut self.board {
+            for mut c in line {
+                if let &mut Cell::New(c_) = c {
+                    *c = Cell::Old(c_);
+                }
             }
-            println!("");
         }
     }
-    fn submit(&mut self) {
-        for mut line in &mut self.board {
-            for mut c in line {
-                *c = State::New('x');
-            }
+    fn modify(&mut self, x: usize, y: usize, c: char){
+        //sets the point at (x,y) to character c
+        // iff it is `Old` (i.e. unchanged from the last round)
+        //more Rust-y to modify the iterator through characters 
+        // rather than by using lots of indexing?
+        assert!(x < self.width && y < self.height);
+        if let Cell::Old(_) = self.board[y][x] {
+            self.board[y][x] = Cell::New(c);
         }
     }
 
@@ -110,9 +136,9 @@ fn main() {
     };
 
     let mut board = Board::new(&f_in);
-    board.print();
     board.submit();
-    board.print();
+    board.modify(18,0,'0');
+    println!("{}", board);
     
     if let Some(m) = matches.subcommand_matches("replace"){
         if let (Some(new), Some(old)) = (m.value_of("new"), m.value_of("old")){
