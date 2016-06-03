@@ -1,4 +1,12 @@
 //http://www.cs.rpi.edu/academics/courses/spring15/csci1200/hw/01_image_processing/hw.pdf
+//Basic program to modify a trivial 'image' (i.e. table of characters)
+//Commands are (usually) operations on fields of characters (e.g. grow/shrink)
+/* Courtesy of the pdf: 
+ "When the structuring element is placed at the edge of the image, one or more pixels may fall oôhe edge
+and not overlap legal image coordinates.  You do not want to access data that does not exist (a memory error
+ that could give weird output or crash the program!)."
+ lol C++
+ */
 
 #[macro_use]
 extern crate clap;
@@ -274,8 +282,11 @@ fn main() {
         }
         else { assert!(false); }
     } else {
-        println!("No command given :(");
-        println!("Commands include `replace`, `dilation`, `erosion`, and `floodfill`");
+        writeln!(&mut std::io::stderr(), "No command given :(")
+            .expect("failed to write to stderr");
+        writeln!(&mut std::io::stderr(), 
+                 "Commands include `replace`, `dilation`, `erosion`, and `floodfill`")
+            .expect("failed to write to stderr");
         std::process::exit(1);  //exit code clap uses
     }
     
