@@ -85,7 +85,7 @@ impl Board {
             }
         }
     }
-    fn submit(&mut self) {
+    /*fn submit(&mut self) {
         //mark each cell as 'Old'
         //this probably isn't necessary because <=1 action will be done.
         //But this would be useful if this code should be more extensible
@@ -97,7 +97,7 @@ impl Board {
                 }
             }
         }
-    }
+    }*/
     fn get_neighbors(&self, x: usize, y: usize) -> Vec<(usize,usize)> {
         let mut points = vec![];
         if y > 0             {  points.push((x,y-1));   }   //above
@@ -261,7 +261,6 @@ fn main() {
             assert!(old.len() == 1);
             let old: char = old.chars().nth(0).unwrap();
             board.dilate(old);
-            board.submit();
         }
         else { assert!(false); }
     } else if let Some(m) = matches.subcommand_matches("erosion"){
