@@ -1,16 +1,16 @@
 //http://www.cs.rpi.edu/academics/courses/spring15/csci1200/hw/01_image_processing/hw.pdf
 
+#[macro_use]
 extern crate clap;
 use clap::{App, Arg, SubCommand,};
 use std::fs::File;
-use std::io::{BufReader, BufRead};
-//use std::io::Write;
+use std::io::{BufReader, BufRead, Write};
 use std::error::Error;
 use std::path::Path;
 use std::fmt;
 
 
-#[derive(PartialEq,Debug)]
+#[derive(PartialEq)]
 //Makes it easy to tell whether a cell was recently changed
 //this way one call to `dilation` won't affect one cell more than once
 enum Cell {
@@ -18,14 +18,13 @@ enum Cell {
     New(char),
 }
 
-#[derive(Debug)]
 //stores board metadata and table
 //point (0,0) is the top-left
-//point (0,9) is the top-right
 struct Board {
     width:  usize,
     height: usize,
     board:  Vec<Vec<Cell>>,
+        //vector of horizontal lines of chars
 }
 
 impl fmt::Display for Board {
@@ -48,7 +47,6 @@ impl fmt::Display for Board {
     }
 }
 
-#[allow(dead_code)]
 impl Board {
     fn new(f_in: &File) -> Board {
         let mut board: Vec<Vec<Cell>> = vec![];
@@ -81,8 +79,9 @@ impl Board {
     }
     fn submit(&mut self) {
         //mark each cell as 'Old'
-        //this probably isn't necessary because 
-        // only one action will be done at a time
+        //this probably isn't necessary because <=1 action will be done.
+        //But this would be useful if this code should be more extensible
+        // and multiple commands can be chained together
         for line in &mut self.board {
             for mut c in line {
                 if let &mut Cell::New(c_) = c {
@@ -100,7 +99,10 @@ impl Board {
         points
     }
     fn dilate(&mut self, c: char) {
-        //works; probably should be refactored 
+        //spread a field of `c`s outward
+        //  ...    .x.
+        //  .x. => xxx
+        //  ...    .x.
         //for each column...
         for x in 0..self.width {
             //in each row...
@@ -122,17 +124,22 @@ impl Board {
             }
         }
     }
-    fn erode(&mut self, c: char) {
+    fn erode(&mut self, old: char, new: char) {
+        //dilate the surroundings of a field (opposite of dilating the field)
+        // can't just dialate background in case there are more than 2 chars
+        //  .x.    ...
+        //  xxx => .x.
+        //  .x.    ...
         for x in 0..self.width {
             for y in 0..self.height {
                 //if cell at (x,y) is an old instance of proper char:
-                if self.board[y][x] == Cell::Old(c) {
+                if self.board[y][x] == Cell::Old(old) {
                     //if it neighbor is something that's not that char:
                     for (i,j) in self.get_neighbors(x,y) {
                         if let Cell::Old(c_) = self.board[j][i] {
-                            if c_ != c {
+                            if c_ != old {
                                 //then set it to that
-                                self.board[y][x] = Cell::New(c_);
+                                self.board[y][x] = Cell::New(new);
                             }
                         }
                     }
@@ -141,9 +148,9 @@ impl Board {
         }
     }
     fn floodfill(&mut self, x: usize, y: usize, new: char) {
+        //replace the field of characters containing (x,y) with the char `new`
         //base case: no neighbors are Cell::Old(old)
         //otherwise, set (x,y) to Cell::New(new) and call floodfill on neighbors
-        //self.get_neighbors(x,y).into_iter().any(|(i,j)| true);
         if let Cell::Old(old) = self.board[y][x] {
             self.board[y][x] = Cell::New(new);
             for (i,j) in self.get_neighbors(x,y) {
@@ -154,16 +161,34 @@ impl Board {
                 }
             }
         }
-        else { assert!(true); }
-
+        else { assert!(false); }
     }
-
+    fn write(&self, mut f_out: &File) {
+        //write formatted results to output file
+        let mut s = String::new();
+        for line in &self.board {
+            for c in line {
+                let c = match *c {
+                    Cell::New(c) => c,
+                    Cell::Old(c) => c,
+                };
+                s.push(c);
+            }
+            s.push('\n');
+            //write each line; cap buffer at `self.width` bytes
+            //inefficient to write a lot, but more probably irresponsible 
+            // to store entire output in a single string (for large tables)
+            if let Err(e) = f_out.write_all(s.as_bytes()){
+                panic!("failed to write board to file; error: {}", 
+                       Error::description(&e));
+            }
+            s.clear();
+        }
+    }
 }
 
-
-
-#[allow(unused_variables)]
 fn main() {
+    //set up arg parsing
     let matches = App::new("hw1_s15")
                     //necessary positional args:
                     .arg(Arg::with_name("input")
@@ -176,6 +201,7 @@ fn main() {
                          .index(2)
                          .required(true))
                     //would be nice to put these in a group (exactly one is necessary),
+                    // but I don't think that can be done with `subcommand`s
                     .subcommand(SubCommand::with_name("replace")
                                 .arg(Arg::with_name("old").required(true))
                                 .arg(Arg::with_name("new").required(true)))
@@ -185,8 +211,8 @@ fn main() {
                                 .arg(Arg::with_name("old").required(true))
                                 .arg(Arg::with_name("new").required(true)))
                     .subcommand(SubCommand::with_name("floodfill")
-                                .arg(Arg::with_name("x").required(true))
-                                .arg(Arg::with_name("y").required(true))
+                                .arg(Arg::with_name("x")  .required(true))
+                                .arg(Arg::with_name("y")  .required(true))
                                 .arg(Arg::with_name("new").required(true)))
                     .get_matches();
     
@@ -205,18 +231,13 @@ fn main() {
         Ok(f)   => f,
     };
 
+    //create board
     let mut board = Board::new(&f_in);
-    //board.replace('X', 'Y');
-    //board.modify(0,0,'0');
-    println!("{}", board);
-    //board.erode('X');
-    board.floodfill(4,4,'Y');
-    println!("{}", board);
-    board.floodfill(1,1,'?');
-    println!("{}", board);
-
-    //board.dilate('X');
+    //println!("Start:\n{}", board);
     
+    //call functions
+    //afaik, clap doesn't let you perfectly implement this,
+    // so my manaul checking is a bit verbose
     if let Some(m) = matches.subcommand_matches("replace"){
         if let (Some(new), Some(old)) = (m.value_of("new"), m.value_of("old")){
             //`char` doesn't implement FromStr (understandably),
@@ -237,11 +258,19 @@ fn main() {
         else { assert!(false); }
     } else if let Some(m) = matches.subcommand_matches("erosion"){
         if let (Some(new), Some(old)) = (m.value_of("new"), m.value_of("old")){
+            assert!(new.len() == 1 && old.len() == 1);
+            let new: char = new.chars().nth(0).unwrap();
+            let old: char = old.chars().nth(0).unwrap();
+            board.erode(old, new);
         }
         else { assert!(false); }
     } else if let Some(m) = matches.subcommand_matches("floodfill"){
-        if let (Some(new), Some(x), Some(y)) = 
-            (m.value_of("new"), m.value_of("x"), m.value_of("y")){
+        if let Some(new) = m.value_of("new") {
+            assert!(new.len() == 1);
+            let new: char = new.chars().nth(0).unwrap();
+            let x = value_t!(m, "x", usize).unwrap();
+            let y = value_t!(m, "y", usize).unwrap();
+            board.floodfill(x,y,new);
         }
         else { assert!(false); }
     } else {
@@ -249,9 +278,7 @@ fn main() {
         println!("Commands include `replace`, `dilation`, `erosion`, and `floodfill`");
         std::process::exit(1);  //exit code clap uses
     }
-
-
-
-    println!("{}", board);
-
+    
+    board.write(&f_out);
+    //println!("Done:\n{}", board);
 }
