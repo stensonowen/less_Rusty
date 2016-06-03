@@ -81,6 +81,8 @@ impl Board {
     }
     fn submit(&mut self) {
         //mark each cell as 'Old'
+        //this probably isn't necessary because 
+        // only one action will be done at a time
         for line in &mut self.board {
             for mut c in line {
                 if let &mut Cell::New(c_) = c {
@@ -89,60 +91,71 @@ impl Board {
             }
         }
     }
-    //fn get(&self, x: usize, y: usize) -> Cell {
-    //    if x < self.width && y < self.height {
-    //        self.board[y][x]
-    //    } else {
-    //        Cell::New('?')
-    //    }
-    //}
-    fn modify(&mut self, x: usize, y: usize, c: char) {
-        //sets the point at (x,y) to character c
-        // iff it is `Old` (i.e. unchanged from the last round)
-        //more Rust-y to modify the iterator through characters 
-        // rather than by using lots of indexing?
-        assert!(x < self.width && y < self.height);
-        if let Cell::Old(_) = self.board[y][x] {
-            self.board[y][x] = Cell::New(c);
-        }
+    fn get_neighbors(&self, x: usize, y: usize) -> Vec<(usize,usize)> {
+        let mut points = vec![];
+        if y > 0             {  points.push((x,y-1));   }   //above
+        if x < self.width-1  {  points.push((x+1,y));   }   //right
+        if y < self.height-1 {  points.push((x,y+1));   }   //below
+        if x > 0             {  points.push((x-1,y));   }   //left
+        points
     }
-    fn is_adjacent_to(&self, x: usize, y: usize, c: char) -> bool {
-        //checks whether the point (x,y) is adjacent to an Cell::Old(c)
-        let equiv = Cell::Old(c);
-        //check top:
-        if y>1                  && self.board[y-1][x] == equiv { true }
-        else if y<self.height-1 && self.board[y+1][x] == equiv { true }
-        //left
-        else if x>1             && self.board[y][x-1] == equiv { true }
-        else if x<self.width-1  && self.board[y][x+1] == equiv { true } 
-        else { false }
-    }
-    fn dilate(&mut self, old: char) {
+    fn dilate(&mut self, c: char) {
         //works; probably should be refactored 
-        //illuminauty
         //for each column...
         for x in 0..self.width {
             //in each row...
             for y in 0..self.height {
                 //if the cell at (x,y) is the proper character...
-                if self.board[y][x] == Cell::Old(old) {
+                if self.board[y][x] == Cell::Old(c) {
                     //for each of the bordering points (above, right, below, left)...
-                    for (j,i) in vec!((y-1,x), (y,x+1), (y+1,x), (y,x-1)) {
-                        //if it is a valid point...
-                        if i < self.width && j < self.height {
-                            //and it is marked `Old`...
-                            if let Cell::Old(c) = self.board[j][i] {
-                                //and it is not already the proper character
-                                if c != old {
-                                    //then change it (but it should be marked `New`)
-                                    self.board[j][i] = Cell::New(old);
-                                }
+                    for (i,j) in self.get_neighbors(x,y) {
+                        //and it is marked `Old`...
+                        if let Cell::Old(c_) = self.board[j][i] {
+                            //and it is not already the proper char
+                            if c_ != c {
+                                //then change (marked `New`)
+                                self.board[j][i] = Cell::New(c);
                             }
                         }
                     }
                 }
             }
         }
+    }
+    fn erode(&mut self, c: char) {
+        for x in 0..self.width {
+            for y in 0..self.height {
+                //if cell at (x,y) is an old instance of proper char:
+                if self.board[y][x] == Cell::Old(c) {
+                    //if it neighbor is something that's not that char:
+                    for (i,j) in self.get_neighbors(x,y) {
+                        if let Cell::Old(c_) = self.board[j][i] {
+                            if c_ != c {
+                                //then set it to that
+                                self.board[y][x] = Cell::New(c_);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    fn floodfill(&mut self, x: usize, y: usize, new: char) {
+        //base case: no neighbors are Cell::Old(old)
+        //otherwise, set (x,y) to Cell::New(new) and call floodfill on neighbors
+        //self.get_neighbors(x,y).into_iter().any(|(i,j)| true);
+        if let Cell::Old(old) = self.board[y][x] {
+            self.board[y][x] = Cell::New(new);
+            for (i,j) in self.get_neighbors(x,y) {
+                if let Cell::Old(c) = self.board[j][i] {
+                    if c == old {
+                        self.floodfill(i,j,new);
+                    }
+                }
+            }
+        }
+        else { assert!(true); }
+
     }
 
 }
@@ -196,8 +209,13 @@ fn main() {
     //board.replace('X', 'Y');
     //board.modify(0,0,'0');
     println!("{}", board);
-    board.dilate('X');
+    //board.erode('X');
+    board.floodfill(4,4,'Y');
     println!("{}", board);
+    board.floodfill(1,1,'?');
+    println!("{}", board);
+
+    //board.dilate('X');
     
     if let Some(m) = matches.subcommand_matches("replace"){
         if let (Some(new), Some(old)) = (m.value_of("new"), m.value_of("old")){
@@ -207,11 +225,14 @@ fn main() {
             let new: char = new.chars().nth(0).unwrap();
             let old: char = old.chars().nth(0).unwrap();
             board.replace(old, new);
-            println!("new: '{}'; old: '{}'", new, old);
         }
         else { assert!(false); } //clap should prevent this from ever being triggered, right?
     } else if let Some(m) = matches.subcommand_matches("dilation"){
         if let Some(old) = m.value_of("old"){
+            assert!(old.len() == 1);
+            let old: char = old.chars().nth(0).unwrap();
+            board.dilate(old);
+            board.submit();
         }
         else { assert!(false); }
     } else if let Some(m) = matches.subcommand_matches("erosion"){
