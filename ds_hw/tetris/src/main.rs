@@ -39,6 +39,4 @@ fn main() {
             _   => ncurses::printw("x"),
         };
     }
-
-
 }
