@@ -41,22 +41,20 @@ struct Board {
 //write!(f, 
 impl fmt::Display for Cell {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut t = term::stdout().unwrap();
-        let col = match self.c {
-            Color::Red      => term::color::RED,
-            Color::Orange   => term::color::WHITE,
-            Color::Yellow   => term::color::YELLOW,
-            Color::Green    => term::color::GREEN,
-            Color::Blue     => term::color::BLUE,
-            Color::Indigo   => term::color::CYAN,
-            //Color::Violet   => term::color::MAGENTA,
-            _               => term::color::BRIGHT_WHITE,
-        };
-        t.fg(col).unwrap();
-        //let res = write!(f, "{}", 42);
-        write!(t, "X");
-        t.reset().unwrap();
-        write!(f, "")
+        let mut s = match self.c {
+            Color::Red      => "\x1B[31m",
+            Color::Orange   => "\x1B[33m",
+            //Color::Orange   => "x",       //orange??
+            Color::Yellow   => "\x1B[93m",
+            Color::Green    => "\x1B[32m",
+            Color::Blue     => "\x1B[34m",
+            Color::Indigo   => "\x1B[36m",
+            Color::Violet   => "\x1B[35m",
+          //_               => "\x1B[37m",  //hwhite
+        }.to_string();
+        s.push_str("X");
+        s.push_str("\x1B[0m");
+        write!(f, "{}", s)
     }
 }
 
@@ -70,9 +68,12 @@ impl Board{
 }
 
 fn main() {
-    let c: Cell = Cell{x:0, y:0, c:Color::Red};
-    println!("{:?}", c);
-    println!("{:?}", Some(c));
+    let c: Cell = Cell{x:0, y:0, c:Color::Yellow};
+    print!("{}", c);
+    let c: Cell = Cell{x:0, y:0, c:Color::Orange};
+    print!("{}", c);
+
+    println!("\n{:?}", Some(c));
     let b : Option<Cell> = None;
     println!("{:?}", b);
     let a: Board = Board::new(); 

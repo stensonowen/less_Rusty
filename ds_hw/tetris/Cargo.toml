@@ -5,4 +5,3 @@ authors = ["owen <stensonowen@gmail.com>"]
 
 [dependencies]
 ncurses = "5.80.0"
-term = "0.2"
