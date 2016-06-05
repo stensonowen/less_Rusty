@@ -127,13 +127,11 @@ impl fmt::Display for Cell {
         let mut s = match self.c {
             Color::Red      => "\x1B[31m",
             Color::Orange   => "\x1B[33m",
-          //Color::Orange   => "x",         //orange??
-            Color::Yellow   => "\x1B[93m",
+            Color::Yellow   => "\x1B[93m",  //Bright Orange
             Color::Green    => "\x1B[32m",
             Color::Blue     => "\x1B[34m",
-            Color::Indigo   => "\x1B[36m",
-            Color::Violet   => "\x1B[35m",
-          //_               => "\x1B[37m",  //hwhite
+            Color::Indigo   => "\x1B[36m",  //Cyan
+            Color::Violet   => "\x1B[35m",  //Magenta
         }.to_string();
         //s.push_str("■");
         s.push_str("⠀");
@@ -206,7 +204,7 @@ fn main() {
     //println!("{}", b);
     let mut b = Board::new(); 
     let mut pieces = 0;
-    for _ in 0..100 {
+    for _ in 0..10 {
         let (x,y) = (rand::random::<usize>() % WIDTH, rand::random::<usize>() % HEIGHT);
         let p = Piece::new(x, y, Shape::rand(), Color::rand());
         if b.compatible(&p) {
