@@ -6,7 +6,29 @@
 
 extern crate ncurses;
 
+const WIDTH:  usize = 20;
+const HEIGHT: usize = 20;
+
+struct Cell {
+    x: u32,
+    y: u32,
+    c: Color,
+}
+
+enum Color { Red, Orange, Yellow, Green, Blue, Indigo, Violet, }
+enum Shape { I, O, T, Z, S, L, J, }
+
+struct Piece {
+  //color: Color,
+    shape: Shape,
+    cells: [Cell; 4],
+}
+
+//Board is an array of rows
+struct Board([[Cell; WIDTH]; HEIGHT]);
+
 fn main() {
+    let a : Option<Cell> = None;
     ncurses::initscr();
     ncurses::raw();
     ncurses::noecho();
