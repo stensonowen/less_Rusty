@@ -68,32 +68,30 @@ impl fmt::Display for Cell {
             Color::Violet   => "\x1B[35m",
           //_               => "\x1B[37m",  //hwhite
         }.to_string();
-        s.push_str("□");
+        s.push_str("■");
         s.push_str("\x1B[0m");
         write!(f, "{}", s)
     }
 }
 impl fmt::Display for Board {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(f, "\n\t"));
         for i in self.table.iter() {
             for j in i {
-                //print!("{:?}, ", j);
-                //print!("{}", j);
                 match *j {
                     Some(c) => try!(write!(f, "{}", c)),
                     None    => try!(write!(f, " ")),
                 };
             }
-            try!(write!(f, "\n"));
+            try!(write!(f, "\n\t"));
         }
-        write!(f, "")
+        writeln!(f, "")
     }
 }
 
 
 impl Board{
     fn new() -> Board {
-        //Board([[None; WIDTH]; HEIGHT])
         Board {
             table: [[None; WIDTH]; HEIGHT]
         }
