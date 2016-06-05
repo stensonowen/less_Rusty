@@ -1,13 +1,27 @@
-//project euler problem 11
+//Project Euler Problem 11: Largest Product in a Grid
 //This was one I could never solve a few years ago in Python
-//find the greatest product of 4 adjacent numbers in a 20x20 grid
-//diagonals included 
+//Find the greatest product of 4 adjacent numbers in a 20x20 grid
+// diagonals included 
+//The problem isn't particularly difficult, but I always came up with 
+// the wrong ansert
+//It's not as elegant as it could be, but it produces the correct result
+//
+//UPDATE: the problem I think I had last time was only testing one kind
+// of diagonal line (\) and omitting the other type (/)
+//
+//Results of `time cargo run` (after running `cargo build`)
+//  real  0m0.062s
+//  user  0m0.044s
+//  sys   0m0.012s
+//Surprisingly fast considering it was written more to be debug-friendly
 
 use std::fs::File;
 use std::fmt;
 use std::io::{BufReader, BufRead};
 
+//dimension of the board
 static LEN: i32 = 20;
+
 
 struct Table(Vec<Vec<i32>>); 
 
@@ -28,34 +42,29 @@ impl Table {
         }
         Table(numbers)
     }
-    //fn get(&self, x: usize, y: usize) -> i32 {
-    //fn get(&self, Point{x,y}: Point) -> i32 {
     fn get(&self, p: &Point) -> i32 {
         self.0[p.y as usize][p.x as usize]
     }
     fn generate_lines(&self, Point{x,y}: Point) -> Vec<Line> {
         //(try to) form lines going right, down, and right-down
         let mut lines = vec![];
-        //for (i,j) in vec![(x+3,y), (x,y+3), (x+3,y+3)] {
-        for (i,j) in vec![(x+3,y), (x,y+3), (x+3,y+3), (x-3,y-3), (x-3,y+3), (x+3,y-3)] {
+        //try horizontal, vertical, diag1, diag2 (-, |, \, /)
+        for (i,j) in vec![(x+3,y), (x,y+3), (x+3,y+3), (x-3,y+3),] {
             let p = Point{x:i, y:j};
             if p.is_valid() {
                 let (dx,dy) = ((i-x)/3,(j-y)/3);
-                //TODO: do functionally
-                let points = Line(vec![
-                    Point{x:x+0*dx, y:y+0*dy},
-                    Point{x:x+1*dx, y:y+1*dy},
-                    Point{x:x+2*dx, y:y+2*dy},
-                    Point{x:x+3*dx, y:y+3*dy}]);
-                //println!("Points: \n{:?}", points);
-                lines.push(points);
+                let points  = (0..4)
+                                .into_iter()
+                                .map(|n| Point{x:x+n*dx, y:y+n*dy})
+                                .collect();
+                lines.push(Line(points));
             }
         }
         lines
     }
 }
 
-#[derive(Debug)]
+
 struct Line (Vec<Point>);
 
 impl fmt::Display for Line {
@@ -68,7 +77,7 @@ impl fmt::Display for Line {
     }
 }
 
-#[derive(Debug)]
+
 struct Point {
     x: i32,
     y: i32,
@@ -81,6 +90,7 @@ impl Point {
     }
 }
 
+
 fn main() {
     let table = Table::populate("grid".to_string());
     let p = Point{x:17, y:17};
@@ -90,19 +100,13 @@ fn main() {
     for x in 0..50 {
         for y in 0..50 {
             let p = Point{x:x,y:y};
-            let mut l = table.generate_lines(p);
-            lines.append(&mut l);
+            if p.is_valid() {
+                let mut l = table.generate_lines(p);
+                lines.append(&mut l);
+            }
         }
     }
-
-    for l in lines.iter().take(10) {
-        let mut n = 1;
-        for point in &l.0 {
-            n *= table.get(point);
-        }
-        println!("{}: \t{}", l, n);
-    }
-    println!("total lines: {}", lines.len());
+    println!("Lines: \t{}", lines.len());
 
     let mut max: i32 = 0;
     let mut n: i32;
@@ -110,21 +114,13 @@ fn main() {
     for line in lines {
         n = 1;
         for point in &line.0 {
-            if point.is_valid(){
-                n *= table.get(point);
-                assert!(point.x >= 0 && point.y >= 0);
-                assert!(point.x <LEN && point.y <LEN);
-            }
+            n *= table.get(point);
         }
         if n > max {
             max = n;
             best = line;
         }
     }
-    println!("max: {}", max);
-    println!("best: {:?}", best);
-    //println!("Number of lines: {}", lines.len());
-    assert!(table.0[0].len() == LEN as usize);
-    assert!(table.0.len() == LEN as usize);
-    //println!("table at (2,0): {}", table.get(&Point{x:2,y:0}));
+    println!("max: \t{}", max);
+    println!("best: \t{}", best);
 }
