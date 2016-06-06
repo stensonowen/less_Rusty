@@ -49,66 +49,102 @@ impl Shape {
 
 
 #[derive(Debug, Clone, Copy)]
+//Either absolute coordinates if it's part of the board
+//or relative coordinates if it's in a Piece
 struct Cell {
-    x: usize,
-    y: usize,
-    c: Color,
+    x:  usize,
+    y:  usize,
+    col:Color,
 }
 impl Cell {
     fn blank() -> Cell {
         Cell {
-            x: 0,
-            y: 0,
-            c: Color::rand(),
+            x:  0,
+            y:  0,
+            col:Color::rand(),
         }
     }
 }
 
 
 struct Piece {
-  //color: Color,
-    shape: Shape,
+    x: usize,
+    y: usize,
+  //shape: Shape,
     cells: [Cell; 4],
 }
 
 impl Piece {
+    fn rotate_counterclockwise(&mut self) {
+        //self.theta = (self.theta + std::f64::consts::PI / 2.0) 
+        //    % (std::f64::consts::PI*2.0);
+        //(equal)
+        //45deg: will be {-1,0,1}
+        let cos = (std::f64::consts::PI/2.0).cos() as i32;  
+        let sin = (std::f64::consts::PI/2.0).sin() as i32;
+        //let trig = cos;
+
+        let points : Vec<(i32,i32)> = {
+            let points = self.cells.iter()
+                .map(|  p  | (p.x as i32, p.y as i32))
+                .map(|(x,y)| (x*cos-y*sin, x*sin+y*cos));
+                //.map(|(x,y)| ((x-y)*trig, (x+y)*trig));
+            //let mins = points.into_iter()
+            let points: Vec<(i32,i32)> = points.collect();
+            let (min_x, min_y) = points.iter()
+                .fold(
+                    (std::i32::MAX, std::i32::MAX),
+                    |(xm,ym), &(x,y)| 
+                        (std::cmp::min(xm,x), std::cmp::min(ym,y)));
+            points.into_iter()
+                .map(|(x,y)| (x-min_x, y-min_y))
+                .collect()
+                //.map(|(x,y)| (x-min_x, y-min_y))
+        };
+        for (i,(x,y)) in points.into_iter().enumerate() {
+            self.cells[i].x = x as usize;
+            self.cells[i].y = y as usize;
+        }
+        
+    }
     fn new(x:usize, y:usize, s:Shape, c:Color) -> Piece {
         //(x,y) is top-left corner
-        let mut cells: [Cell; 4];
         //let mut cells = [Cell::blank(); 4];
         let cells = match s {
-            Shape::I => [Cell{x:x,y:y,c:c}, 
-                            Cell{x:x,y:y+1,c:c}, 
-                            Cell{x:x,y:y+2,c:c},
-                            Cell{x:x,y:y+3,c:c}],
-            Shape::O => [Cell{x:x,y:y,c:c}, 
-                            Cell{x:x+1,y:y,c:c}, 
-                            Cell{x:x+1,y:y+1,c:c},
-                            Cell{x:x,y:y+1,c:c}],
-            Shape::T => [Cell{x:x,y:y,c:c}, 
-                            Cell{x:x+1,y:y,c:c}, 
-                            Cell{x:x+2,y:y,c:c},
-                            Cell{x:x+1,y:y+1,c:c}],
-            Shape::Z => [Cell{x:x,y:y,c:c}, 
-                            Cell{x:x+1,y:y,c:c}, 
-                            Cell{x:x+1,y:y+1,c:c},
-                            Cell{x:x+2,y:y+1,c:c}],
-            Shape::S => [Cell{x:x,y:y+1,c:c}, 
-                            Cell{x:x+1,y:y+1,c:c}, 
-                            Cell{x:x+1,y:y,c:c},
-                            Cell{x:x+2,y:y,c:c}],
-            Shape::L => [Cell{x:x,y:y,c:c}, 
-                            Cell{x:x,y:y+1,c:c}, 
-                            Cell{x:x,y:y+2,c:c},
-                            Cell{x:x+1,y:y+2,c:c}],
-            Shape::J => [Cell{x:x,y:y+2,c:c}, 
-                            Cell{x:x+1,y:y+2,c:c}, 
-                            Cell{x:x+1,y:y+1,c:c},
-                            Cell{x:x+1,y:y,c:c}],
+            Shape::I => [Cell{x:0,y:0,col:c}, 
+                            Cell{x:0,y:1,col:c}, 
+                            Cell{x:0,y:2,col:c},
+                            Cell{x:0,y:3,col:c}],
+            Shape::O => [Cell{x:0,y:0,col:c}, 
+                            Cell{x:1,y:0,col:c}, 
+                            Cell{x:1,y:1,col:c},
+                            Cell{x:0,y:1,col:c}],
+            Shape::T => [Cell{x:0,y:0,col:c}, 
+                            Cell{x:1,y:0,col:c}, 
+                            Cell{x:2,y:0,col:c},
+                            Cell{x:1,y:1,col:c}],
+            Shape::Z => [Cell{x:0,y:0,col:c}, 
+                            Cell{x:1,y:0,col:c}, 
+                            Cell{x:1,y:1,col:c},
+                            Cell{x:2,y:1,col:c}],
+            Shape::S => [Cell{x:0,y:1,col:c}, 
+                            Cell{x:1,y:1,col:c}, 
+                            Cell{x:1,y:0,col:c},
+                            Cell{x:2,y:0,col:c}],
+            Shape::L => [Cell{x:0,y:0,col:c}, 
+                            Cell{x:0,y:1,col:c}, 
+                            Cell{x:0,y:2,col:c},
+                            Cell{x:1,y:2,col:c}],
+            Shape::J => [Cell{x:0,y:2,col:c}, 
+                            Cell{x:1,y:2,col:c}, 
+                            Cell{x:1,y:1,col:c},
+                            Cell{x:1,y:0,col:c}],
         };
         Piece {
-            shape: s,
-            cells: cells,
+            x:      x,
+            y:      y,
+          //shape:  s,
+            cells:  cells,
         }
     }
 }
@@ -124,7 +160,7 @@ struct Board {
 //write!(f, 
 impl fmt::Display for Cell {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut s = match self.c {
+        let mut s = match self.col {
             Color::Red      => "\x1B[31m",
             Color::Orange   => "\x1B[33m",
             Color::Yellow   => "\x1B[93m",  //Bright Orange
@@ -167,15 +203,15 @@ impl Board{
         for x in 0..WIDTH {
             for y in 0..HEIGHT {
                 use Color::*;
-                let OPTS = 8;   // ROYGBIV + 1
-                b.table[y][x] = match rand::random::<u8>() % OPTS {
-                    0 => Some(Cell{x:x, y:y, c:Red}),
-                    1 => Some(Cell{x:x, y:y, c:Orange}),
-                    2 => Some(Cell{x:x, y:y, c:Yellow}),
-                    3 => Some(Cell{x:x, y:y, c:Green}),
-                    4 => Some(Cell{x:x, y:y, c:Blue}),
-                    5 => Some(Cell{x:x, y:y, c:Indigo}),
-                    6 => Some(Cell{x:x, y:y, c:Violet}),
+                let opts = 8;   // ROYGBIV + 1
+                b.table[y][x] = match rand::random::<u8>() % opts {
+                    0 => Some(Cell{x:x, y:y, col:Red}),
+                    1 => Some(Cell{x:x, y:y, col:Orange}),
+                    2 => Some(Cell{x:x, y:y, col:Yellow}),
+                    3 => Some(Cell{x:x, y:y, col:Green}),
+                    4 => Some(Cell{x:x, y:y, col:Blue}),
+                    5 => Some(Cell{x:x, y:y, col:Indigo}),
+                    6 => Some(Cell{x:x, y:y, col:Violet}),
                     _ => None,
                 };
             }
@@ -187,14 +223,14 @@ impl Board{
     }
     fn compatible(&self, p: &Piece) -> bool {
         p.cells.iter().all(
-            |&Cell{x:x,y:y,..}| 
-            0 <= x && x < WIDTH  &&
-            0 <= y && y < HEIGHT &&
+            |&Cell{x,y,..}| 
+            0 <= p.x+x && p.x+x < WIDTH  &&
+            0 <= p.y+y && p.y+y < HEIGHT &&
             self.get(x,y).is_none()) 
     }
     fn incorporate(&mut self, p:Piece) {
         for &c in p.cells.iter() {
-            self.table[c.y][c.x] = Some(c);
+            self.table[p.y+c.y][p.x+c.x] = Some(c);
         }
     }
 }
@@ -202,18 +238,25 @@ impl Board{
 fn main() {
     //let b = Board::random();
     //println!("{}", b);
-    let mut b = Board::new(); 
-    let mut pieces = 0;
-    for _ in 0..10 {
-        let (x,y) = (rand::random::<usize>() % WIDTH, rand::random::<usize>() % HEIGHT);
-        let p = Piece::new(x, y, Shape::rand(), Color::rand());
-        if b.compatible(&p) {
-            pieces += 1;
-            b.incorporate(p)
-        }
-    }
+    let mut b = Board::new();
+    let mut p = Piece::new(15,15,Shape::rand(),Color::rand());
+    p.rotate_counterclockwise();
+    println!("{:?}", p.cells);
+    b.incorporate(p);
     println!("{}", b);
-    println!("Pieces: {}", pieces);
+    
+    //let mut b = Board::new(); 
+    //let mut pieces = 0;
+    //for _ in 0..10 {
+    //    let (x,y) = (rand::random::<usize>() % WIDTH, rand::random::<usize>() % HEIGHT);
+    //    let p = Piece::new(x, y, Shape::rand(), Color::rand());
+    //    if b.compatible(&p) {
+    //        pieces += 1;
+    //        b.incorporate(p)
+    //    }
+    //}
+    //println!("{}", b);
+    //println!("Pieces: {}", pieces);
 
 
     
